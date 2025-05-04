@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>SpendScope Dashboard</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="dashboard.css" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+
+<body>
+  <div class="dashboard-container">
+    <header class="header">
+      <h1>💳 SpendScope</h1>
+      <nav class="nav-links">
+        <a href="index.html">📤 Upload</a>
+        <a href="#">⚙️ Settings</a>
+      </nav>
+    </header>
+
+    <section class="summary-cards">
+      <div class="card">
+        <h2>Total Spend</h2>
+        <p id="total-spend">$0.00</p>
+      </div>
+      <div class="card">
+        <h2>Receipts</h2>
+        <p id="receipt-count">0</p>
+      </div>
+      <div class="card">
+        <h2>Last Upload</h2>
+        <p id="last-upload">N/A</p>
+      </div>
+    </section>
+
+    <section class="item-section">
+      <h2>🛍️ Items Extracted</h2>
+      <ul id="item-list"></ul>
+    </section>
+
+    <section class="chart-section">
+      <h2>📊 Spending Overview</h2>
+      <canvas id="spend-chart"></canvas>
+    </section>
+
+    <section class="history-section">
+      <h2>🧾 Receipt History</h2>
+      <table id="receipt-history">
+        <thead>
+          <tr>
+            <th>Date</th>
+            <th>Total</th>
+            <th>Details</th>
+          </tr>
+        </thead>
+        <tbody>
+          <!-- Populated by JS -->
+        </tbody>
+      </table>
+    </section>
+
+    <footer>
+      <button id="export-btn">⬇️ Export Data</button>
+    </footer>
+  </div>
+
+  <script>
+    document.addEventListener("DOMContentLoaded", () => {
+      const urlParams = new URLSearchParams(window.location.search);
+      const itemsParam = urlParams.get("items");
+
+      if (itemsParam) {
+        const items = JSON.parse(decodeURIComponent(itemsParam));
+
+        const itemList = document.getElementById("item-list");
+        items.forEach(item => {
+          const li = document.createElement("li");
+          li.textContent = `${item.item}: $${item.price.toFixed(2)}`;
+          itemList.appendChild(li);
+        });
+
+        const totalSpend = items.reduce((acc, item) => acc + item.price, 0).toFixed(2);
+        document.getElementById("total-spend").textContent = `$${totalSpend}`;
+        document.getElementById("receipt-count").textContent = 1;
+        document.getElementById("last-upload").textContent = new Date().toLocaleDateString();
+
+        const ctx = document.getElementById("spend-chart").getContext("2d");
+        new Chart(ctx, {
+          type: 'bar',
+          data: {
+            labels: ['Receipt 1'],
+            datasets: [{
+              label: 'Spend ($)',
+              data: [totalSpend],
+              backgroundColor: '#4ade80',
+              borderColor: '#166534',
+              borderWidth: 1
+            }]
+          },
+          options: {
+            responsive: true,
+            scales: {
+              y: {
+                beginAtZero: true
+              }
+            }
+          }
+        });
+      }
+    });
+  </script>
+</body>
+</html>
+
+

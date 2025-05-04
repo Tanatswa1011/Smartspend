@@ -65,11 +65,11 @@
 
           const data = await res.json();
           output.textContent = data.text || "No text found.";
-          
-          // Display extracted items
-          itemsOutput.innerHTML = "<h3>Extracted Items:</h3><ul>" + 
-            data.items.map(item => `<li>${item.item}: $${item.price.toFixed(2)}</li>`).join('') + 
-            "</ul>";
+
+          // Redirect to the dashboard and pass extracted items via URL
+          const extractedItems = encodeURIComponent(JSON.stringify(data.items));
+          window.location.href = `/dashboard.html?items=${extractedItems}`;
+
         } catch (err) {
           output.textContent = "Error uploading file.";
           console.error(err);
@@ -81,3 +81,4 @@
   </script>
 </body>
 </html>
+
