@@ -1,0 +1,106 @@
+/* Font */
+body {
+    font-family: 'Inter', sans-serif;
+    background-color: #ecf9f1; /* green-50 equivalent */
+    margin: 0;
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem;
+  }
+  
+  /* Container */
+  .container {
+    background-color: #ffffff;
+    border-radius: 1.5rem; /* rounded-2xl */
+    box-shadow: 0 10px 15px -3px rgba(34,197,94,0.4), 0 4px 6px -4px rgba(34,197,94,0.3); /* green shadow */
+    padding: 2rem;
+    width: 100%;
+    max-width: 400px;
+    box-sizing: border-box;
+  }
+  
+  /* Heading */
+  h2 {
+    font-weight: 600;
+    font-size: 1.5rem; /* text-2xl */
+    color: #14532d; /* green-900 */
+    margin-bottom: 1.5rem;
+  }
+  
+  /* File upload label */
+  label.file-upload {
+    display: block;
+    margin-bottom: 1rem;
+    cursor: pointer;
+  }
+  
+  /* File upload box */
+  .file-dropzone {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 2px dashed #86efac; /* green-300 */
+    border-radius: 0.5rem; /* rounded-lg */
+    height: 4rem; /* h-16 */
+    transition: border-color 0.3s ease;
+    color: #22c55e; /* green-500 */
+  }
+  
+  .file-dropzone:hover {
+    border-color: #166534; /* green-700 */
+    color: #166534;
+  }
+  
+  /* SVG icon */
+  .file-dropzone svg {
+    width: 1.5rem; /* w-6 */
+    height: 1.5rem; /* h-6 */
+    margin-right: 0.5rem;
+    stroke: currentColor;
+    fill: none;
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+  
+  /* File input hidden */
+  input[type="file"] {
+    display: none;
+  }
+  
+  /* Upload button */
+  button.upload-btn {
+    width: 100%;
+    background-color: #22c55e; /* green-600 */
+    color: white;
+    font-weight: 600;
+    padding: 0.75rem 0;
+    border: none;
+    border-radius: 0.75rem; /* rounded-lg */
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+    margin-bottom: 1rem;
+    font-size: 1rem;
+  }
+  
+  button.upload-btn:hover {
+    background-color: #166534; /* green-700 */
+  }
+  
+  /* Disabled input */
+  input.disabled-input {
+    width: 100%;
+    background-color: #dcfce7; /* green-100 */
+    border: 1px solid #bbf7d0; /* green-200 */
+    border-radius: 0.75rem; /* rounded-lg */
+    height: 2.5rem; /* h-10 */
+    padding: 0 1rem;
+    color: #166534; /* green-700 */
+    cursor: not-allowed;
+    font-size: 1rem;
+    box-sizing: border-box;
+  }
+ 
+  

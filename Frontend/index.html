@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>SpendScope - Upload Receipt</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+
+<body>
+  <div class="container">
+    <h2>Upload Your Receipt</h2>
+    <label for="file-upload" class="file-upload" aria-label="Choose a file or drag it here">
+      <div class="file-dropzone" role="button" tabindex="0">
+        <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+          <polyline points="17 8 12 3 7 8"/>
+          <line x1="12" y1="3" x2="12" y2="15"/>
+        </svg>
+        <span>Choose a file or drag it here</span>
+      </div>
+      <input id="file-upload" type="file" />
+    </label>
+    <button class="upload-btn" type="button" id="upload-btn">Upload</button>
+    <input type="text" disabled placeholder="No file chosen" class="disabled-input" />
+    <pre id="receipt-output" style="white-space: pre-wrap; background: #f0fdf4; padding: 1rem; border-radius: 0.75rem; border: 1px solid #bbf7d0; color: #166534;"></pre>
+    <div id="items-output" style="margin-top: 1rem;"></div>
+  </div>
+
+  <script>
+    document.addEventListener("DOMContentLoaded", () => {
+      const fileInput = document.getElementById("file-upload");
+      const filenameDisplay = document.querySelector(".disabled-input");
+      const output = document.getElementById("receipt-output");
+      const itemsOutput = document.getElementById("items-output");
+      const uploadBtn = document.getElementById("upload-btn");
+
+      fileInput.addEventListener("change", () => {
+        filenameDisplay.value = fileInput.files[0]?.name || "No file chosen";
+      });
+
+      async function uploadReceipt() {
+        const file = fileInput.files[0];
+        if (!file) {
+          alert("Please select a receipt image.");
+          return;
+        }
+
+        const formData = new FormData();
+        formData.append("file", file);
+
+        output.textContent = "Processing receipt...";
+        itemsOutput.innerHTML = ""; // Clear previous items
+
+        try {
+          const res = await fetch("http://localhost:8000/upload-receipt/", {
+            method: "POST",
+            body: formData
+          });
+
+          if (!res.ok) {
+            throw new Error(`Server error: ${res.statusText}`);
+          }
+
+          const data = await res.json();
+          output.textContent = data.text || "No text found.";
+          
+          // Display extracted items
+          itemsOutput.innerHTML = "<h3>Extracted Items:</h3><ul>" + 
+            data.items.map(item => `<li>${item.item}: $${item.price.toFixed(2)}</li>`).join('') + 
+            "</ul>";
+        } catch (err) {
+          output.textContent = "Error uploading file.";
+          console.error(err);
+        }
+      }
+
+      uploadBtn.addEventListener("click", uploadReceipt);
+    });
+  </script>
+</body>
+</html>
