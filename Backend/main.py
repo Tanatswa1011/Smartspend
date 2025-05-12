@@ -62,6 +62,15 @@ async def upload_receipt(file: UploadFile = File(...)):
         "items": items
     }
 
+@app.get("/items/")
+def read_items():
+    db = SessionLocal()
+    try:
+        items = db.query(ReceiptItem).all()
+        return [{"item": i.item, "price": i.price} for i in items]
+    finally:
+        db.close()
+
 def extract_items(text: str):
     """
     Extracts item names and prices using regex from OCR text.
@@ -86,3 +95,4 @@ def extract_items(text: str):
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
+
