@@ -6,18 +6,21 @@ import pytesseract
 import io
 import re
 
+from models import ReceiptItem
+from database import SessionLocal
+
 app = FastAPI()
 
-# CORS (Allow frontend to access this API)
+# CORS setup
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Change this in production to your domain
+    allow_origins=["*"],  # Change in production
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# Optional: Limit max upload size (e.g., 5 MB)
+# Max upload size middleware (5MB)
 MAX_SIZE_MB = 5
 
 @app.middleware("http")
@@ -29,7 +32,6 @@ async def limit_upload_size(request: Request, call_next):
 
 @app.post("/upload-receipt/")
 async def upload_receipt(file: UploadFile = File(...)):
-    # Validate file type
     if not file.content_type.startswith('image/'):
         raise HTTPException(status_code=400, detail="Unsupported file type. Upload an image.")
 
@@ -42,6 +44,19 @@ async def upload_receipt(file: UploadFile = File(...)):
     raw_text = pytesseract.image_to_string(image)
     items = extract_items(raw_text)
 
+    # Save items to database
+    db = SessionLocal()
+    try:
+        for item in items:
+            db_item = ReceiptItem(item=item["item"], price=item["price"])
+            db.add(db_item)
+        db.commit()
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"Database error: {e}")
+    finally:
+        db.close()
+
     return {
         "text": raw_text,
         "items": items
@@ -49,29 +64,25 @@ async def upload_receipt(file: UploadFile = File(...)):
 
 def extract_items(text: str):
     """
-    Extracts item names and prices from text using regex.
-    Looks for lines like:
-    "Milk..........1.99" or "Bread 2.50"
+    Extracts item names and prices using regex from OCR text.
+    Looks for lines like: "Milk..........1.99" or "Bread 2.50"
     """
     lines = text.splitlines()
     items = []
 
     for line in lines:
-        # Match item name and price patterns
         match = re.search(r"(.+?)\s*\.{0,}\s*[\$]?(\d{1,3}(?:,\d{3})*(?:\.\d{2}))", line)
         if match:
             item_name = match.group(1).strip()
-            price_str = match.group(2).replace(",", "")  # Remove comma from prices
+            price_str = match.group(2).replace(",", "")
             try:
                 price = float(price_str)
                 items.append({"item": item_name, "price": price})
             except ValueError:
-                continue  # Skip if conversion fails
-
+                continue
     return items
 
-# To run the server directly with `python main.py`
+# Run with: python main.py
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
-

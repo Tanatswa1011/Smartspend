@@ -1,0 +1,14 @@
+Aws database Setup (RDS)
+- Phase 1
+free tier 
+Set: 
+    DB instance class: db.t3.micro
+    DB name, username, password 
+    Public access: Yes 
+    Allow incoming connectons edit the VPC  security group for port 5432 
+
+my master passwords: MySecurePass123!
+Master username
+smartspend
+Endpoint
+smartspend-db1.cn4kw48ww4h5.eu-north-1.rds.amazonaws.com

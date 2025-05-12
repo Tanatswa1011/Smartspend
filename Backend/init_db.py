@@ -1,8 +1,12 @@
 # init_db.py
 
 from database import Base, engine
-from models import ReceiptItem
+from models import ReceiptItem  # Explicit import is cleaner and safer
 
-print("Creating database tables...")
-Base.metadata.create_all(bind=engine)
-print("Done.")
+def init():
+    print("🔧 Creating tables...")
+    Base.metadata.create_all(bind=engine)
+    print("✅ Database initialization complete.")
+
+if __name__ == "__main__":
+    init()
