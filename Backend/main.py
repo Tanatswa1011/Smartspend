@@ -5,16 +5,21 @@ from PIL import Image
 import pytesseract
 import io
 import re
+import logging
 
 from models import ReceiptItem
 from database import SessionLocal
 
+# Initialize logging
+logging.basicConfig(level=logging.INFO)
+
+# Initialize FastAPI app
 app = FastAPI()
 
-# CORS setup
+# CORS setup - restrict in production
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Change in production
+    allow_origins=["http://127.0.0.1:5500"],  # or your deployed frontend domai,  # Replace with specific domain in production
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -32,17 +37,32 @@ async def limit_upload_size(request: Request, call_next):
 
 @app.post("/upload-receipt/")
 async def upload_receipt(file: UploadFile = File(...)):
-    if not file.content_type.startswith('image/'):
+    if not file.content_type.startswith("image/"):
         raise HTTPException(status_code=400, detail="Unsupported file type. Upload an image.")
 
     try:
         image_bytes = await file.read()
         image = Image.open(io.BytesIO(image_bytes))
-    except Exception:
+
+        # Convert to grayscale and binarize for better OCR
+        image = image.convert("L")  # Grayscale
+        image = image.point(lambda x: 0 if x < 140 else 255, "1")  # Binarize
+    except Exception as e:
+        logging.error(f"Image read error: {e}")
         raise HTTPException(status_code=400, detail="Failed to read image.")
 
-    raw_text = pytesseract.image_to_string(image)
+    # Extract text using Tesseract OCR
+    try:
+        raw_text = pytesseract.image_to_string(image, config="--psm 6")
+    except Exception as e:
+        logging.error(f"OCR error: {e}")
+        raise HTTPException(status_code=500, detail="Failed to perform OCR.")
+
+    logging.info(f"Extracted text: {raw_text}")
+
+    # Extract items
     items = extract_items(raw_text)
+    logging.info(f"Parsed items: {items}")
 
     # Save items to database
     db = SessionLocal()
@@ -53,16 +73,19 @@ async def upload_receipt(file: UploadFile = File(...)):
         db.commit()
     except Exception as e:
         db.rollback()
+        logging.error(f"Database error: {e}")
         raise HTTPException(status_code=500, detail=f"Database error: {e}")
     finally:
         db.close()
 
     return {
-        "text": raw_text,
-        "items": items
+        "message": "Receipt processed successfully.",
+        "items_found": len(items),
+        "items": items,
+        "text": raw_text
     }
 
-@app.get("/items/")
+@app.get("/receipt-items/")
 def read_items():
     db = SessionLocal()
     try:
@@ -80,10 +103,11 @@ def extract_items(text: str):
     items = []
 
     for line in lines:
-        match = re.search(r"(.+?)\s*\.{0,}\s*[\$]?(\d{1,3}(?:,\d{3})*(?:\.\d{2}))", line)
+        # Accepts comma or dot for decimal, optional currency, and flexible spacing
+        match = re.search(r"(.+?)\s*\.{0,}\s*[\$€]?\s*(\d{1,3}(?:[.,]\d{3})*(?:[.,]\d{2}))", line)
         if match:
             item_name = match.group(1).strip()
-            price_str = match.group(2).replace(",", "")
+            price_str = match.group(2).replace(",", ".").replace(" ", "")
             try:
                 price = float(price_str)
                 items.append({"item": item_name, "price": price})
@@ -91,7 +115,7 @@ def extract_items(text: str):
                 continue
     return items
 
-# Run with: python main.py
+# Run the app with: python main.py
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)

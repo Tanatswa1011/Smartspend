@@ -1,4 +1,136 @@
+```html
 <!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>SpendScope Dashboard</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="dashboard.css" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+
+<body>
+  <div class="dashboard-container">
+    <header class="header">
+      <h1>💳 SpendScope</h1>
+      <nav class="nav-links">
+        <a href="Frontend/index.html">📤 Upload</a>
+        <a href="#">⚙️ Settings</a>
+      </nav>
+    </header>
+
+    <section class="summary-cards">
+      <div class="card">
+        <h2>Total Spend</h2>
+        <p id="total-spend">$0.00</p>
+      </div>
+      <div class="card">
+        <h2>Receipts</h2>
+        <p id="receipt-count">0</p>
+      </div>
+      <div class="card">
+        <h2>Last Upload</h2>
+        <p id="last-upload">N/A</p>
+      </div>
+    </section>
+
+    <section class="item-section">
+      <h2>🛍️ Items Extracted</h2>
+      <ul id="item-list"></ul>
+    </section>
+
+    <section class="chart-section">
+      <h2>📊 Spending Overview</h2>
+      <canvas id="spend-chart"></canvas>
+    </section>
+
+    <section class="history-section">
+      <h2>🧾 Receipt History</h2>
+      <table id="receipt-history">
+        <thead>
+          <tr>
+            <th>Item</th>
+            <th>Price</th>
+          </tr>
+        </thead>
+        <tbody id="receipt-body">
+          <!-- Populated by JS -->
+        </tbody>
+      </table>
+    </section>
+
+    <footer>
+      <button id="export-btn">⬇️ Export Data</button>
+    </footer>
+  </div>
+
+  <script>
+    async function fetchReceiptItems() {
+      try {
+        const response = await fetch('http://localhost:8000/receipt-items');
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        const data = await response.json();
+
+        const itemList = document.getElementById("item-list");
+        const receiptBody = document.getElementById("receipt-body");
+
+        let total = 0;
+        itemList.innerHTML = '';
+        receiptBody.innerHTML = '';
+
+        data.forEach((item, index) => {
+          total += item.price;
+
+          const li = document.createElement("li");
+          li.textContent = `${item.item}: $${item.price.toFixed(2)}`;
+          itemList.appendChild(li);
+
+          const tr = document.createElement("tr");
+          tr.innerHTML = `<td>${item.item}</td><td>$${item.price.toFixed(2)}</td>`;
+          receiptBody.appendChild(tr);
+        });
+
+        document.getElementById("total-spend").textContent = `$${total.toFixed(2)}`;
+        document.getElementById("receipt-count").textContent = data.length;
+        document.getElementById("last-upload").textContent = new Date().toLocaleDateString();
+
+        const ctx = document.getElementById("spend-chart").getContext("2d");
+        const chart = new Chart(ctx, {
+          type: 'bar',
+          data: {
+            labels: data.map((item, i) => `#${i + 1}`),
+            datasets: [{
+              label: 'Price ($)',
+              data: data.map(item => item.price),
+              backgroundColor: '#4ade80',
+              borderColor: '#166534',
+              borderWidth: 1
+            }]
+          },
+          options: {
+            responsive: true,
+            scales: {
+              y: {
+                beginAtZero: true
+              }
+            }
+          }
+        });
+
+      } catch (error) {
+        console.error("Failed to fetch receipt items:", error);
+        alert("Failed to fetch receipt items. Please try again later.");
+      }
+    }
+
+    document.addEventListener("DOMContentLoaded", fetchReceiptItems);
+  </script>
+</body>
+</html>
+```
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
