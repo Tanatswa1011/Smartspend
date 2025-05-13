@@ -8,7 +8,12 @@ import re
 import logging
 
 from models import ReceiptItem
-from database import SessionLocal
+from database import SessionLocal, engine, Base
+
+# ---------------------- Setup ----------------------
+
+# Create all tables
+Base.metadata.create_all(bind=engine)
 
 # Initialize logging
 logging.basicConfig(level=logging.INFO)
@@ -16,10 +21,10 @@ logging.basicConfig(level=logging.INFO)
 # Initialize FastAPI app
 app = FastAPI()
 
-# CORS setup - restrict in production
+# CORS setup - restrict to your frontend origin in production
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://127.0.0.1:5500"],  # or your deployed frontend domai,  # Replace with specific domain in production
+    allow_origins=["http://127.0.0.1:5500"],  # Change to your frontend URL in prod
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -35,36 +40,34 @@ async def limit_upload_size(request: Request, call_next):
         return JSONResponse(status_code=413, content={"detail": "File too large"})
     return await call_next(request)
 
+
+# ---------------------- Upload Endpoint ----------------------
+
 @app.post("/upload-receipt/")
 async def upload_receipt(file: UploadFile = File(...)):
     if not file.content_type.startswith("image/"):
-        raise HTTPException(status_code=400, detail="Unsupported file type. Upload an image.")
+        raise HTTPException(status_code=400, detail="Unsupported file type. Please upload an image.")
 
     try:
         image_bytes = await file.read()
         image = Image.open(io.BytesIO(image_bytes))
-
-        # Convert to grayscale and binarize for better OCR
         image = image.convert("L")  # Grayscale
         image = image.point(lambda x: 0 if x < 140 else 255, "1")  # Binarize
     except Exception as e:
         logging.error(f"Image read error: {e}")
-        raise HTTPException(status_code=400, detail="Failed to read image.")
+        raise HTTPException(status_code=400, detail="Could not read uploaded image.")
 
-    # Extract text using Tesseract OCR
     try:
         raw_text = pytesseract.image_to_string(image, config="--psm 6")
     except Exception as e:
         logging.error(f"OCR error: {e}")
-        raise HTTPException(status_code=500, detail="Failed to perform OCR.")
+        raise HTTPException(status_code=500, detail="Error during OCR processing.")
 
-    logging.info(f"Extracted text: {raw_text}")
+    logging.info(f"OCR Extracted Text:\n{raw_text}")
 
-    # Extract items
     items = extract_items(raw_text)
-    logging.info(f"Parsed items: {items}")
+    logging.info(f"Parsed Items: {items}")
 
-    # Save items to database
     db = SessionLocal()
     try:
         for item in items:
@@ -74,7 +77,7 @@ async def upload_receipt(file: UploadFile = File(...)):
     except Exception as e:
         db.rollback()
         logging.error(f"Database error: {e}")
-        raise HTTPException(status_code=500, detail=f"Database error: {e}")
+        raise HTTPException(status_code=500, detail="Failed to save items to database.")
     finally:
         db.close()
 
@@ -85,6 +88,9 @@ async def upload_receipt(file: UploadFile = File(...)):
         "text": raw_text
     }
 
+
+# ---------------------- View Items Endpoint ----------------------
+
 @app.get("/receipt-items/")
 def read_items():
     db = SessionLocal()
@@ -94,16 +100,18 @@ def read_items():
     finally:
         db.close()
 
+
+# ---------------------- Helper Function ----------------------
+
 def extract_items(text: str):
     """
-    Extracts item names and prices using regex from OCR text.
+    Extracts item names and prices from receipt OCR text.
     Looks for lines like: "Milk..........1.99" or "Bread 2.50"
     """
     lines = text.splitlines()
     items = []
 
     for line in lines:
-        # Accepts comma or dot for decimal, optional currency, and flexible spacing
         match = re.search(r"(.+?)\s*\.{0,}\s*[\$€]?\s*(\d{1,3}(?:[.,]\d{3})*(?:[.,]\d{2}))", line)
         if match:
             item_name = match.group(1).strip()
@@ -115,8 +123,9 @@ def extract_items(text: str):
                 continue
     return items
 
-# Run the app with: python main.py
+
+# ---------------------- Run App ----------------------
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
-
