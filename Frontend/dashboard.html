@@ -96,7 +96,7 @@
     </div>
 
     <script>
-        // Chat functionality
+        // Chat assistant functionality
         document.addEventListener("DOMContentLoaded", () => {
             const chatInput = document.getElementById("chat-input");
             const sendButton = document.getElementById("send-message");
@@ -104,29 +104,18 @@
             const toggleButton = document.getElementById("toggle-ai-chat");
             const chatSection = document.getElementById("ai-chat-section");
 
-            // Toggle chat visibility
             toggleButton.addEventListener("click", () => {
                 const isExpanded = toggleButton.getAttribute("aria-expanded") === "true";
                 toggleButton.setAttribute("aria-expanded", !isExpanded);
                 chatSection.classList.toggle("minimized");
-                
-                // Update button text
                 toggleButton.textContent = isExpanded ? "Show AI Assistant" : "Hide AI Assistant";
-                
-                // If opening the chat, focus on input
-                if (!isExpanded) {
-                    chatInput.focus();
-                }
+                if (!isExpanded) chatInput.focus();
             });
 
             function addMessage(content, isUser = false) {
                 const messageDiv = document.createElement("div");
                 messageDiv.className = `message ${isUser ? 'user-message' : 'ai-message'}`;
-                messageDiv.innerHTML = `
-                    <div class="message-content">
-                        ${content}
-                    </div>
-                `;
+                messageDiv.innerHTML = `<div class="message-content">${content}</div>`;
                 chatMessages.appendChild(messageDiv);
                 chatMessages.scrollTop = chatMessages.scrollHeight;
             }
@@ -134,134 +123,133 @@
             async function handleUserMessage() {
                 const message = chatInput.value.trim();
                 if (!message) return;
-
-                // Add user message to chat
                 addMessage(message, true);
                 chatInput.value = '';
 
                 try {
-                    // Here you would typically make an API call to your AI endpoint
-                    // For now, we'll simulate a response
                     const response = await simulateAIResponse(message);
                     addMessage(response);
-                } catch (error) {
+                } catch {
                     addMessage("Sorry, I couldn't process your request at the moment.");
                 }
             }
 
             function simulateAIResponse(message) {
-                // Simulate AI processing time
                 return new Promise((resolve) => {
                     setTimeout(() => {
-                        const responses = {
-                            spending: "Based on your recent receipts, your spending has been primarily in groceries and utilities.",
-                            receipts: "You have uploaded 5 receipts this month, totaling $523.45.",
-                            help: "I can help you analyze your spending patterns, track receipts, and provide insights about your expenses.",
-                        };
-
-                        const lowerMessage = message.toLowerCase();
-                        let response = "I'm not sure about that. Try asking about your spending, receipts, or how I can help!";
-
-                        if (lowerMessage.includes("spend")) {
-                            response = responses.spending;
-                        } else if (lowerMessage.includes("receipt")) {
-                            response = responses.receipts;
-                        } else if (lowerMessage.includes("help")) {
-                            response = responses.help;
+                        const lower = message.toLowerCase();
+                        if (lower.includes("spend")) {
+                            resolve("Your spending is mostly in groceries and utilities.");
+                        } else if (lower.includes("receipt")) {
+                            resolve("You've uploaded 5 receipts this month.");
+                        } else if (lower.includes("help")) {
+                            resolve("I can help you analyze receipts and track expenses.");
+                        } else {
+                            resolve("Try asking about spending, receipts, or how I can help.");
                         }
-
-                        resolve(response);
                     }, 1000);
                 });
             }
 
-            // Event listeners
             sendButton.addEventListener("click", handleUserMessage);
-            chatInput.addEventListener("keypress", (e) => {
-                if (e.key === "Enter") {
-                    handleUserMessage();
-                }
+            chatInput.addEventListener("keypress", e => {
+                if (e.key === "Enter") handleUserMessage();
             });
         });
 
-        // Original receipt fetching functionality
-        async function fetchReceiptItems() {
+        // Extract items from URL if available
+        function getItemsFromURL() {
+            const params = new URLSearchParams(window.location.search);
+            const itemsParam = params.get("items");
+            if (!itemsParam) return null;
+
             try {
-                const response = await fetch('http://localhost:8000/receipt-items');
-                if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
-                }
-                const data = await response.json();
+                return JSON.parse(decodeURIComponent(itemsParam));
+            } catch (e) {
+                console.error("Error parsing items from URL:", e);
+                return null;
+            }
+        }
 
-                const itemList = document.getElementById("item-list");
-                const receiptBody = document.getElementById("receipt-body");
+        // Populate dashboard
+        function renderDashboardData(data) {
+            const itemList = document.getElementById("item-list");
+            const receiptBody = document.getElementById("receipt-body");
+            let total = 0;
 
-                let total = 0;
-                itemList.innerHTML = '';
-                receiptBody.innerHTML = '';
+            itemList.innerHTML = '';
+            receiptBody.innerHTML = '';
 
-                data.forEach((item, index) => {
-                    total += item.price;
+            data.forEach((item, index) => {
+                total += item.price;
 
-                    const li = document.createElement("li");
-                    li.textContent = `${item.item}: $${item.price.toFixed(2)}`;
-                    itemList.appendChild(li);
+                const li = document.createElement("li");
+                li.textContent = `${item.item}: $${item.price.toFixed(2)}`;
+                itemList.appendChild(li);
 
-                    const tr = document.createElement("tr");
-                    tr.innerHTML = `<td>${item.item}</td><td>$${item.price.toFixed(2)}</td>`;
-                    receiptBody.appendChild(tr);
-                });
+                const tr = document.createElement("tr");
+                tr.innerHTML = `<td>${item.item}</td><td>$${item.price.toFixed(2)}</td>`;
+                receiptBody.appendChild(tr);
+            });
 
-                document.getElementById("total-spend").textContent = `$${total.toFixed(2)}`;
-                document.getElementById("receipt-count").textContent = data.length;
-                document.getElementById("last-upload").textContent = new Date().toLocaleDateString();
+            document.getElementById("total-spend").textContent = `$${total.toFixed(2)}`;
+            document.getElementById("receipt-count").textContent = data.length;
+            document.getElementById("last-upload").textContent = new Date().toLocaleDateString();
 
-                const ctx = document.getElementById("spend-chart").getContext("2d");
-                new Chart(ctx, {
-                    type: 'bar',
-                    data: {
-                        labels: data.map((item, i) => `#${i + 1}`),
-                        datasets: [{
-                            label: 'Price ($)',
-                            data: data.map(item => item.price),
-                            backgroundColor: '#ffffff',
-                            borderColor: '#333333',
-                            borderWidth: 1
-                        }]
+            const ctx = document.getElementById("spend-chart").getContext("2d");
+            new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: data.map((_, i) => `#${i + 1}`),
+                    datasets: [{
+                        label: 'Price ($)',
+                        data: data.map(item => item.price),
+                        backgroundColor: '#ffffff',
+                        borderColor: '#333333',
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: { labels: { color: '#ffffff' } }
                     },
-                    options: {
-                        responsive: true,
-                        plugins: {
-                            legend: {
-                                labels: {
-                                    color: '#ffffff'
-                                }
-                            }
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            grid: { color: '#333333' },
+                            ticks: { color: '#ffffff' }
                         },
-                        scales: {
-                            y: {
-                                beginAtZero: true,
-                                grid: {
-                                    color: '#333333'
-                                },
-                                ticks: {
-                                    color: '#ffffff'
-                                }
-                            },
-                            x: {
-                                grid: {
-                                    color: '#333333'
-                                },
-                                ticks: {
-                                    color: '#ffffff'
-                                }
-                            }
+                        x: {
+                            grid: { color: '#333333' },
+                            ticks: { color: '#ffffff' }
                         }
                     }
-                });
+                }
+            });
+        }
 
-            } catch (error) {
-                console.error("Failed to fetch receipt items:", error);
+        // Main function to fetch or use URL data
+        async function fetchReceiptItems() {
+            const urlItems = getItemsFromURL();
+
+            if (urlItems) {
+                renderDashboardData(urlItems);
+                // Optionally save to backend
+                await fetch('http://localhost:8000/save-items', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(urlItems)
+                });
+            } else {
+                try {
+                    const response = await fetch('http://localhost:8000/receipt-items');
+                    if (!response.ok) throw new Error("HTTP error " + response.status);
+                    const data = await response.json();
+                    renderDashboardData(data);
+                } catch (error) {
+                    console.error("Failed to fetch receipt items:", error);
+                }
             }
         }
 
@@ -269,5 +257,6 @@
     </script>
 </body>
 </html>
+
 
 

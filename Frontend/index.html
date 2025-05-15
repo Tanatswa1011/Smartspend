@@ -99,7 +99,8 @@
                 itemsOutput.innerHTML = "";
 
                 try {
-                    const res = await fetch("http://localhost:8000/upload-receipt/", {
+                    const res = await fetch("http://localhost:8001/upload-receipt/", {
+
                         method: "POST",
                         body: formData
                     });

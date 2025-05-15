@@ -1,7 +1,7 @@
 from fastapi import FastAPI, File, UploadFile, HTTPException, Request
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
-from PIL import Image
+from PIL import Image, UnidentifiedImageError
 import pytesseract
 import io
 import re
@@ -9,6 +9,9 @@ import logging
 
 from models import ReceiptItem
 from database import SessionLocal, engine, Base
+import pytesseract
+pytesseract.pytesseract.tesseract_cmd = "/opt/homebrew/bin/tesseract"
+
 
 # ---------------------- Setup ----------------------
 
@@ -21,10 +24,10 @@ logging.basicConfig(level=logging.INFO)
 # Initialize FastAPI app
 app = FastAPI()
 
-# CORS setup - restrict to your frontend origin in production
+# CORS setup - adjust this in production
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://127.0.0.1:5500"],  # Change to your frontend URL in prod
+    allow_origins=["http://127.0.0.1:5500"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -40,11 +43,12 @@ async def limit_upload_size(request: Request, call_next):
         return JSONResponse(status_code=413, content={"detail": "File too large"})
     return await call_next(request)
 
-
 # ---------------------- Upload Endpoint ----------------------
 
 @app.post("/upload-receipt/")
 async def upload_receipt(file: UploadFile = File(...)):
+    logging.info(f"Received file: {file.filename} with content type: {file.content_type}")
+
     if not file.content_type.startswith("image/"):
         raise HTTPException(status_code=400, detail="Unsupported file type. Please upload an image.")
 
@@ -58,10 +62,13 @@ async def upload_receipt(file: UploadFile = File(...)):
         raise HTTPException(status_code=400, detail="Could not read uploaded image.")
 
     try:
+        logging.info("Running OCR...")
         raw_text = pytesseract.image_to_string(image, config="--psm 6")
+        logging.info(f"OCR result: {raw_text}")
     except Exception as e:
         logging.error(f"OCR error: {e}")
         raise HTTPException(status_code=500, detail="Error during OCR processing.")
+
 
     logging.info(f"OCR Extracted Text:\n{raw_text}")
 
@@ -88,7 +95,6 @@ async def upload_receipt(file: UploadFile = File(...)):
         "text": raw_text
     }
 
-
 # ---------------------- View Items Endpoint ----------------------
 
 @app.get("/receipt-items/")
@@ -99,7 +105,6 @@ def read_items():
         return [{"item": i.item, "price": i.price} for i in items]
     finally:
         db.close()
-
 
 # ---------------------- Helper Function ----------------------
 
@@ -123,9 +128,8 @@ def extract_items(text: str):
                 continue
     return items
 
-
 # ---------------------- Run App ----------------------
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
+    uvicorn.run("main:app", host="0.0.0.0", port=8001, reload=True)
