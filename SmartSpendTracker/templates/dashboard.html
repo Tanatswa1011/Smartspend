@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en" data-bs-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - SmartSpend</title>
+    <link rel="stylesheet" href="https://cdn.replit.com/agent/bootstrap-agent-dark-theme.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/feather-icons/dist/feather.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/chart.js@4.3.0/dist/chart.min.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+        <div class="container">
+            <a class="navbar-brand" href="#">
+                <i data-feather="dollar-sign"></i> SmartSpend
+            </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('index') }}">Upload Receipt</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link active" href="{{ url_for('dashboard') }}">Dashboard</a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <main class="container mt-4">
+        <div class="row">
+            <div class="col-12">
+                <div class="card shadow-sm mb-4">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h2 class="card-title h5 mb-0">
+                            <i data-feather="bar-chart-2"></i> Expense Dashboard
+                        </h2>
+                        <a href="{{ url_for('index') }}" class="btn btn-sm btn-primary">
+                            <i data-feather="plus"></i> New Receipt
+                        </a>
+                    </div>
+                    <div class="card-body">
+                        <div class="row mb-4">
+                            <!-- Summary Cards -->
+                            <div class="col-md-4 mb-3">
+                                <div class="card bg-primary bg-opacity-10 h-100">
+                                    <div class="card-body text-center">
+                                        <h5 class="card-title">Total Expenses</h5>
+                                        <h2 class="display-5 mb-0" id="totalExpenses">$0.00</h2>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-4 mb-3">
+                                <div class="card bg-success bg-opacity-10 h-100">
+                                    <div class="card-body text-center">
+                                        <h5 class="card-title">Receipts Processed</h5>
+                                        <h2 class="display-5 mb-0" id="receiptCount">0</h2>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-4 mb-3">
+                                <div class="card bg-info bg-opacity-10 h-100">
+                                    <div class="card-body text-center">
+                                        <h5 class="card-title">Average Item Price</h5>
+                                        <h2 class="display-5 mb-0" id="averagePrice">$0.00</h2>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Chart Section -->
+                        <div class="row mb-4" style="height: 350px">
+                            <div class="col-lg-6 mb-3">
+                                <div class="card h-100">
+                                    <div class="card-header">
+                                        <h5 class="card-title mb-0">Expense Trend</h5>
+                                    </div>
+                                    <div class="card-body">
+                                        <canvas id="expenseChart"></canvas>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-lg-3 mb-3">
+                                <div class="card h-100">
+                                    <div class="card-header">
+                                        <h5 class="card-title mb-0">Price Distribution</h5>
+                                    </div>
+                                    <div class="card-body">
+                                        <canvas id="priceDistribution"></canvas>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-lg-3 mb-3">
+                                <div class="card h-100">
+                                    <div class="card-header">
+                                        <h5 class="card-title mb-0">Top 5 Items</h5>
+                                    </div>
+                                    <div class="card-body">
+                                        <div style="overflow-y: auto; height: 100%;">
+                                            <ul class="list-group list-group-flush" id="topItemsList">
+                                                <!-- Top items will be loaded here -->
+                                                <li class="list-group-item bg-transparent d-flex justify-content-between">
+                                                    <span>No items yet</span>
+                                                    <span class="badge bg-primary rounded-pill">$0.00</span>
+                                                </li>
+                                            </ul>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Expense Table -->
+                        <div class="card">
+                            <div class="card-header">
+                                <h5 class="card-title mb-0">Recent Expenses</h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="table-responsive">
+                                    <table class="table table-hover" id="expensesTable">
+                                        <thead>
+                                            <tr>
+                                                <th>ID</th>
+                                                <th>Item</th>
+                                                <th class="text-end">Price</th>
+                                                <th>Category</th>
+                                                <th>Date</th>
+                                                <th>Actions</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="expensesList">
+                                            <!-- Expenses will be loaded here -->
+                                        </tbody>
+                                    </table>
+                                </div>
+                                
+                                <!-- Loading Spinner -->
+                                <div class="text-center my-5 d-none" id="loadingSpinner">
+                                    <div class="spinner-border text-primary" role="status">
+                                        <span class="visually-hidden">Loading...</span>
+                                    </div>
+                                    <p class="mt-2">Loading expense data...</p>
+                                </div>
+                                
+                                <!-- No Data Message -->
+                                <div class="text-center my-5 d-none" id="noDataMessage">
+                                    <i data-feather="inbox" style="width: 48px; height: 48px;" class="text-muted mb-3"></i>
+                                    <h5>No Expenses Found</h5>
+                                    <p class="text-muted">Upload receipts to start tracking your expenses</p>
+                                    <a href="{{ url_for('index') }}" class="btn btn-primary mt-2">
+                                        <i data-feather="upload"></i> Upload Receipt
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <footer class="bg-dark text-center text-white-50 py-4 mt-5">
+        <div class="container">
+            <p class="mb-0">SmartSpend - Receipt OCR & Expense Tracker</p>
+        </div>
+    </footer>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/feather-icons/dist/feather.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.3.0/dist/chart.umd.min.js"></script>
+    <script src="{{ url_for('static', filename='dashboard.js') }}"></script>
+</body>
+</html>
