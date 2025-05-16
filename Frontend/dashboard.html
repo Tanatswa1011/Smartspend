@@ -74,7 +74,7 @@
                 <section class="ai-chat-section" id="ai-chat-section">
                     <h2 class="sr-only">AI Assistant</h2>
                     <div class="chat-container">
-                        <div class="chat-messages" id="chat-messages">
+                        <div class="chat-messages" id="chat-messages" aria-live="polite">
                             <div class="message ai-message">
                                 <div class="message-content">
                                     Hello! I'm your AI assistant. Ask me anything about your spending or receipts.
@@ -96,7 +96,8 @@
     </div>
 
     <script>
-        // Chat assistant functionality
+        let chartInstance;
+
         document.addEventListener("DOMContentLoaded", () => {
             const chatInput = document.getElementById("chat-input");
             const sendButton = document.getElementById("send-message");
@@ -157,7 +158,6 @@
             });
         });
 
-        // Extract items from URL if available
         function getItemsFromURL() {
             const params = new URLSearchParams(window.location.search);
             const itemsParam = params.get("items");
@@ -171,7 +171,6 @@
             }
         }
 
-        // Populate dashboard
         function renderDashboardData(data) {
             const itemList = document.getElementById("item-list");
             const receiptBody = document.getElementById("receipt-body");
@@ -196,8 +195,13 @@
             document.getElementById("receipt-count").textContent = data.length;
             document.getElementById("last-upload").textContent = new Date().toLocaleDateString();
 
+            localStorage.setItem("receiptData", JSON.stringify(data));
+
             const ctx = document.getElementById("spend-chart").getContext("2d");
-            new Chart(ctx, {
+
+            if (chartInstance) chartInstance.destroy();
+
+            chartInstance = new Chart(ctx, {
                 type: 'bar',
                 data: {
                     labels: data.map((_, i) => `#${i + 1}`),
@@ -229,13 +233,11 @@
             });
         }
 
-        // Main function to fetch or use URL data
         async function fetchReceiptItems() {
             const urlItems = getItemsFromURL();
 
             if (urlItems) {
                 renderDashboardData(urlItems);
-                // Optionally save to backend
                 await fetch('http://localhost:8000/save-items', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -249,14 +251,32 @@
                     renderDashboardData(data);
                 } catch (error) {
                     console.error("Failed to fetch receipt items:", error);
+                    document.getElementById("item-list").innerHTML = "<li>Failed to load receipt data.</li>";
                 }
             }
         }
 
         document.addEventListener("DOMContentLoaded", fetchReceiptItems);
+
+        document.getElementById("export-btn").addEventListener("click", () => {
+            const rows = [["Item", "Price"]];
+            const data = JSON.parse(localStorage.getItem("receiptData") || "[]");
+            data.forEach(item => rows.push([item.item, item.price]));
+
+            const csvContent = rows.map(e => e.join(",")).join("\n");
+            const blob = new Blob([csvContent], { type: "text/csv" });
+            const url = URL.createObjectURL(blob);
+
+            const link = document.createElement("a");
+            link.href = url;
+            link.download = "spending_data.csv";
+            link.click();
+            URL.revokeObjectURL(url);
+        });
     </script>
 </body>
 </html>
+
 
 
 
